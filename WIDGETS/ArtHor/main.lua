@@ -1,5 +1,7 @@
 -- Horus X10, X10S, 12S
 -- LCD: 480*272 readable outdoor color screen
+Pitch=0
+Roll=0
 
 local shadowed  = 0
 
@@ -9,8 +11,9 @@ local function debugFeed()
 end
 
 local options = {
-  { "Sensor", SOURCE, 1 },
-  { "Color", COLOR, WHITE },
+  { "Land_color", COLOR, LINE_COLOR},
+  { "Sky_color", COLOR, CURVE_COLOR},
+  { "Axis_color", COLOR, RED},
   { "Shadow", BOOL, 0 }
 }
 
@@ -18,28 +21,32 @@ local options = {
 local function create(zone, options)
   local myZone  = { zone=zone, options=options, counter=0 }
   histCellData = {}
+
+  lcd.setColor(CURVE_COLOR, lcd.RGB(0, 163, 224)) -- Sky blue
+  lcd.setColor(LINE_COLOR, lcd.RGB(229, 114, 0)) -- Land
+
+
   return myZone
 end
 
 -- This function allow updates when you change widgets settings
 local function update(myZone, options)
   myZone.options = options
+
+  lcd.setColor(CURVE_COLOR, myZone.options.Sky_color) -- Sky blue
+  lcd.setColor(LINE_COLOR, myZone.options.Land_color) -- Land
+
+  return
 end
 
 -- Here place the artificial horizon drawing routine
 local origX, origY, endX, endY = 19,7,72,49  -- This will work as a rectangular widget
 local centerX=math.floor((endX-origX)/2 + 0.5 + origX)
 local centerY=math.floor((endY-origY)/2 + 0.5 + origY)
-local Pitch=10
-local Roll=10
 
 local function drawHorizon(zone)
   -- Erase the area
-  lcd.drawFilledRectangle(origX,origY,endX-origX+1,endY-origY+1,-1)
-
-  -- Draw a box (for testing)
-  --lcd.drawRectangle(origX,origY,endX-origX+1,endY-origY+1, GREY(9))
-  lcd.drawLine(origX,centerY,endX,centerY,1,0)
+  lcd.drawFilledRectangle(origX,origY,endX-origX+1,endY-origY+1,MAINVIEW_PANES_COLOR)
 
   local pitch = Pitch
   local roll = Roll
@@ -79,15 +86,27 @@ local function drawHorizon(zone)
       Y1 = -YSpanHalf
     end
 
+
     if inverseYaxis == 0  then
     Y2 = YSpanHalf
-      lcd.drawLine(X1, centerY + Y1, X1, centerY + Y2 + 1, -1, 0)
+      lcd.drawLine(X1, centerY + Y1, X1, centerY + Y2 + 1, SOLID, LINE_COLOR)
+      lcd.drawLine(X1,centerY-Y2,X1,centerY+Y1-1,SOLID,CURVE_COLOR)
    else
     Y2= -YSpanHalf
-      lcd.drawLine(X1, centerY + Y2, X1, centerY + Y1 , -1, 0)
+      lcd.drawLine(X1, centerY + Y2, X1, centerY + Y1 , SOLID, LINE_COLOR)
+      lcd.drawLine(X1,centerY+Y1,X1,centerY-Y2,SOLID,CURVE_COLOR)
    end
 
   end
+
+  -- Draw a box (for testing)
+  --lcd.drawRectangle(origX,origY,endX-origX+1,endY-origY+1, GREY(9))
+  -- Patterns are masks from 8 bits numbers
+  -- DASHED = 0x77
+  -- DASH DOT DASH = 0x6B
+  -- LONG DASHES = 0x33
+  lcd.drawLine(origX,centerY,endX,centerY,0x77,CURVE_COLOR)
+
 
 
   -- Numbers for pitch and roll
@@ -118,8 +137,8 @@ function refresh(myZone)
   endY=myZone.zone.y+myZone.zone.h-1
   centerX=math.floor((endX-origX)/2 + 0.5 + origX)
   centerY=math.floor((endY-origY)/2 + 0.5 + origY)
-  Pitch=debugFeed()
-  Roll=debugFeed()
+  --Pitch=debugFeed()
+  --Roll=debugFeed()*6
 
   --lcd.clear()
   drawHorizon(myZone)
